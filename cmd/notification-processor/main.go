@@ -12,6 +12,7 @@ import (
 	"github.com/RamzassH/notification-processor/internal/notification"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -48,8 +49,21 @@ func run(ctx context.Context, dbURL string) error {
 
 	slog.Info("ready", "service", serviceName)
 
-	if err := notification.Consume(ctx, reader, pool); err != nil {
-		return fmt.Errorf("consume: %w", err)
+	group, groupCtx := errgroup.WithContext(ctx)
+
+	group.Go(func() error {
+		return notification.Consume(groupCtx, reader, pool)
+	})
+
+	const workerCount = 2
+	for range workerCount {
+		group.Go(func() error {
+			return notification.RunWorker(groupCtx, pool)
+		})
+	}
+
+	if err := group.Wait(); err != nil {
+		return err
 	}
 
 	slog.Info("service stopped", "service", serviceName)

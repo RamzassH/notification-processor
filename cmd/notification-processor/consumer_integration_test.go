@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Run against a test stack with the migration applied, topic user-actions,
-// and no other notification-processor group members.
 func TestConsumePoisonAndReplay(t *testing.T) {
 	broker, dbURL := os.Getenv("TEST_KAFKA_BROKER"), os.Getenv("TEST_DATABASE_URL")
 	if broker == "" || dbURL == "" {
@@ -35,8 +33,6 @@ func TestConsumePoisonAndReplay(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	// Pin all three records to partition zero so progress past the poison
-	// record cannot be explained by consuming a different partition.
 	const partition = 0
 	conn, err := kafka.DialLeader(ctx, "tcp", broker, eventsTopic, partition)
 	require.NoError(t, err)

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
@@ -19,25 +20,38 @@ func Consume(ctx context.Context, reader *kafka.Reader, pool *pgxpool.Pool) erro
 		return errors.New("nil pool")
 	}
 
-	for {
+	for ctx.Err() == nil {
 		msg, err := reader.FetchMessage(ctx)
-		if ctx.Err() != nil {
-			return nil
-		}
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			return fmt.Errorf("fetch message: %w", err)
 		}
 
-		var event Event
-		if err := json.Unmarshal(msg.Value, &event); err != nil {
-			slog.Warn("invalid event JSON", "topic", msg.Topic,
-				"partition", msg.Partition, "offset", msg.Offset, "error", err)
-		} else if err := saveEvent(ctx, pool, event); err != nil {
-			return fmt.Errorf("process %s partition %d offset %d: %w", msg.Topic, msg.Partition, msg.Offset, err)
-		}
-
-		if err := reader.CommitMessages(ctx, msg); err != nil {
-			return fmt.Errorf("commit %s partition %d offset %d: %w", msg.Topic, msg.Partition, msg.Offset, err)
+		messageCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		err = processMessage(messageCtx, reader, pool, msg)
+		cancel()
+		if err != nil {
+			return err
 		}
 	}
+	return nil
+}
+
+func processMessage(ctx context.Context, reader *kafka.Reader, pool *pgxpool.Pool, msg kafka.Message) error {
+	var event Event
+	if err := json.Unmarshal(msg.Value, &event); err != nil {
+		slog.Warn("invalid event JSON", "topic", msg.Topic,
+			"partition", msg.Partition, "offset", msg.Offset, "error", err)
+	} else if err := saveEvent(ctx, pool, event); err != nil {
+		return fmt.Errorf("process %s partition %d offset %d: %w",
+			msg.Topic, msg.Partition, msg.Offset, err)
+	}
+
+	if err := reader.CommitMessages(ctx, msg); err != nil {
+		return fmt.Errorf("commit %s partition %d offset %d: %w",
+			msg.Topic, msg.Partition, msg.Offset, err)
+	}
+	return nil
 }

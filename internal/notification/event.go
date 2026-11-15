@@ -11,4 +11,5 @@ type Event struct {
 	EventType string          `json:"event_type"`
 	Timestamp time.Time       `json:"timestamp"`
 	Payload   json.RawMessage `json:"payload"`
+	Attempts  int32           `json:"attempts"`
 }
