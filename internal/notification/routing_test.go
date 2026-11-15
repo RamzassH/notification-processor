@@ -33,3 +33,27 @@ func TestChannelsFor_UnknownEventType(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, got)
 }
+
+func TestNotificationText(t *testing.T) {
+	for _, tc := range []struct {
+		eventType string
+		text      string
+	}{
+		{"order_created", "Ваш заказ создан"},
+		{"payment_received", "Оплата получена"},
+		{"order_shipped", "Ваш заказ отправлен"},
+	} {
+		t.Run(tc.eventType, func(t *testing.T) {
+			got, err := notificationText(tc.eventType, "")
+			require.NoError(t, err)
+			assert.Equal(t, tc.text, got)
+
+			got, err = notificationText(tc.eventType, "101")
+			require.NoError(t, err)
+			assert.Equal(t, tc.text+" (заказ 101)", got)
+		})
+	}
+
+	_, err := notificationText("order_cancelled", "101")
+	require.Error(t, err)
+}

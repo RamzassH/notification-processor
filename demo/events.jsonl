@@ -1,0 +1,9 @@
+{"event_id":"90000000-0000-4000-8000-000000000001","user_id":12345,"event_type":"order_created","timestamp":"2026-01-01T12:00:00Z","payload":{"order_id":101}}
+{
+{"event_id":"90000000-0000-4000-8000-000000000002","user_id":12345,"event_type":"payment_received","timestamp":"2026-01-01T12:00:00Z","payload":{"order_id":101}}
+{"event_id":"90000000-0000-4000-8000-000000000003","user_id":12345,"event_type":"order_shipped","timestamp":"2026-01-01T12:00:00Z","payload":{"order_id":101}}
+{"event_id":"90000000-0000-4000-8000-000000000001","user_id":12345,"event_type":"order_created","timestamp":"2026-01-01T12:00:00Z","payload":{"order_id":101}}
+{"event_id":"90000000-0000-4000-8000-000000000004","user_id":7531,"event_type":"order_created","timestamp":"2026-01-01T15:10:00Z","payload":{"order_id":202,"items":3}}
+{"event_id":"90000000-0000-4000-8000-000000000005","user_id":7531,"event_type":"payment_received","timestamp":"2026-01-01T15:13:00Z","payload":{"order_id":202,"amount":79,"currency":"BYN"}}
+{"event_id":"90000000-0000-4000-8000-000000000006","user_id":8920,"event_type":"order_shipped","timestamp":"2026-01-01T16:27:00Z","payload":{"order_id":303,"carrier":"courier"}}
+{"event_id":"90000000-0000-4000-8000-000000000007","user_id":1954,"event_type":"payment_received","timestamp":"2026-01-01T17:08:00Z","payload":{"order_id":404,"amount":12,"currency":"EUR"}}

@@ -12,13 +12,6 @@ var (
 	ErrPermanent = errors.New("permanent delivery failure")
 )
 
-type Notification struct {
-	EventID string
-	UserID  int64
-	Channel string
-	Text    string
-}
-
 func deliver(ctx context.Context, msg Notification) error {
 	if err := ctx.Err(); err != nil {
 		return err

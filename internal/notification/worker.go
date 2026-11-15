@@ -69,18 +69,9 @@ func processNextWith(ctx context.Context, pool *pgxpool.Pool, send func(context.
 			return fmt.Errorf("select notification: %w", err)
 		}
 
-		switch eventType {
-		case "order_created":
-			msg.Text = "Ваш заказ создан"
-		case "payment_received":
-			msg.Text = "Оплата получена"
-		case "order_shipped":
-			msg.Text = "Ваш заказ отправлен"
-		default:
-			return fmt.Errorf("unknown event type %q", eventType)
-		}
-		if orderID != "" {
-			msg.Text += " (заказ " + orderID + ")"
+		msg.Text, err = notificationText(eventType, orderID)
+		if err != nil {
+			return err
 		}
 
 		if err := ctx.Err(); err != nil {

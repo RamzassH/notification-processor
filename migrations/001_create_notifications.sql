@@ -1,4 +1,4 @@
-CREATE TABLE notifications
+CREATE TABLE IF NOT EXISTS notifications
 (
     event_id        uuid        NOT NULL,
     channel         text        NOT NULL,

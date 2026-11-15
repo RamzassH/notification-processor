@@ -13,3 +13,10 @@ type Event struct {
 	Payload   json.RawMessage `json:"payload"`
 	Attempts  int32           `json:"attempts"`
 }
+
+type Notification struct {
+	EventID string
+	UserID  int64
+	Channel string
+	Text    string
+}
