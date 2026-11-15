@@ -2,41 +2,35 @@ package main
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func checkPostgres(dbURL string) error {
-	if dbURL == "" {
-		return errors.New("DATABASE_URL environment variable not set")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func run(ctx context.Context) error {
+	startupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	pool, poolErr := pgxpool.New(ctx, dbURL)
-	if poolErr != nil {
-		return fmt.Errorf("create postgres pool: %w", poolErr)
+	if err := checkPostgres(startupCtx, os.Getenv("DATABASE_URL")); err != nil {
+		return err
 	}
-	defer pool.Close()
-	pingErr := pool.Ping(ctx)
-	if pingErr != nil {
-		return fmt.Errorf("ping postgres: %w", pingErr)
+	if err := checkKafka(startupCtx, os.Getenv("KAFKA_BROKER"), "user-actions"); err != nil {
+		return err
 	}
-	slog.Info("postgres connected")
 
+	slog.Info("ready", "service", "notification-processor")
+	<-ctx.Done()
+	slog.Info("service stopped", "service", "notification-processor")
 	return nil
 }
 
 func main() {
 	slog.Info("start", "service", "notification-processor")
-	dbURL := os.Getenv("DATABASE_URL")
-
-	err := checkPostgres(dbURL)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := run(ctx)
+	stop()
 	if err != nil {
 		slog.Error("startup failed", "error", err)
 		os.Exit(1)
