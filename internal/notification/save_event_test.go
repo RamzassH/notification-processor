@@ -23,14 +23,14 @@ func TestSaveEventReplay(t *testing.T) {
 	defer pool.Close()
 
 	event := Event{
-		UserId: 12345, EventType: "order_created", Timestamp: time.Now().UTC(),
+		UserID: 12345, EventType: "order_created", Timestamp: time.Now().UTC(),
 		Payload: json.RawMessage(`{"order_id":101}`),
 	}
-	require.NoError(t, pool.QueryRow(ctx, "SELECT gen_random_uuid()::text").Scan(&event.EventId))
+	require.NoError(t, pool.QueryRow(ctx, "SELECT gen_random_uuid()::text").Scan(&event.EventID))
 	defer func() {
 		cleanupCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		_, err := pool.Exec(cleanupCtx, "DELETE FROM notifications WHERE event_id = $1", event.EventId)
+		_, err := pool.Exec(cleanupCtx, "DELETE FROM notifications WHERE event_id = $1", event.EventID)
 		if err != nil {
 			t.Errorf("clean up test event: %v", err)
 		}
@@ -41,14 +41,14 @@ func TestSaveEventReplay(t *testing.T) {
 		var values []string
 		err := pool.QueryRow(ctx, `
 			SELECT array_agg(channel || '=' || status ORDER BY channel)
-			FROM notifications WHERE event_id = $1`, event.EventId).Scan(&values)
+			FROM notifications WHERE event_id = $1`, event.EventID).Scan(&values)
 		require.NoError(t, err)
 		return values
 	}
 
 	require.NoError(t, saveEvent(ctx, pool, event))
 	require.Equal(t, []string{"email=pending", "push=pending"}, states())
-	_, err = pool.Exec(ctx, "UPDATE notifications SET status = 'sent' WHERE event_id = $1 AND channel = 'email'", event.EventId)
+	_, err = pool.Exec(ctx, "UPDATE notifications SET status = 'sent' WHERE event_id = $1 AND channel = 'email'", event.EventID)
 	require.NoError(t, err)
 	require.NoError(t, saveEvent(ctx, pool, event))
 	require.Equal(t, []string{"email=sent", "push=pending"}, states())

@@ -26,7 +26,6 @@ func checkKafka(ctx context.Context, broker, topic string) error {
 		return fmt.Errorf("lookup partitions for %q: %w", topic, err)
 	}
 
-	slog.Info("kafka topic available", "topic", topic, "count partitions", len(partitions))
+	slog.Info("kafka topic available", "topic", topic, "partitions", len(partitions))
 	return nil
-
 }

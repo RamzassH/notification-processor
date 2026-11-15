@@ -2,37 +2,73 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/RamzassH/notification-processor/internal/notification"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/segmentio/kafka-go"
 )
 
-func run(ctx context.Context) error {
+const (
+	serviceName = "notification-processor"
+	eventsTopic = "user-actions"
+)
+
+func run(ctx context.Context, dbURL string) error {
 	startupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	if err := checkPostgres(startupCtx, os.Getenv("DATABASE_URL")); err != nil {
-		return err
+	pool, err := pgxpool.New(startupCtx, dbURL)
+	if err != nil {
+		return fmt.Errorf("create postgres pool: %w", err)
 	}
-	if err := checkKafka(startupCtx, os.Getenv("KAFKA_BROKER"), "user-actions"); err != nil {
+	defer pool.Close()
+
+	if err := checkPostgres(startupCtx, pool); err != nil {
 		return err
 	}
 
-	slog.Info("ready", "service", "notification-processor")
-	<-ctx.Done()
-	slog.Info("service stopped", "service", "notification-processor")
+	broker := os.Getenv("KAFKA_BROKER")
+	if err := checkKafka(startupCtx, broker, eventsTopic); err != nil {
+		return err
+	}
+
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:        []string{broker},
+		Topic:          eventsTopic,
+		GroupID:        serviceName,
+		CommitInterval: 0,
+	})
+	defer reader.Close()
+
+	slog.Info("ready", "service", serviceName)
+
+	if err := notification.Consume(ctx, reader, pool); err != nil {
+		return fmt.Errorf("consume: %w", err)
+	}
+
+	slog.Info("service stopped", "service", serviceName)
 	return nil
 }
 
 func main() {
-	slog.Info("start", "service", "notification-processor")
+	slog.Info("start", "service", serviceName)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	err := run(ctx)
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		slog.Error("Missing DATABASE_URL")
+		os.Exit(1)
+	}
+	err := run(ctx, dbURL)
 	stop()
 	if err != nil {
-		slog.Error("startup failed", "error", err)
+		slog.Error("service failed", "error", err)
 		os.Exit(1)
 	}
 }

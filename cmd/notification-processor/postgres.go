@@ -9,16 +9,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func checkPostgres(ctx context.Context, dbURL string) error {
-	if dbURL == "" {
-		return errors.New("DATABASE_URL environment variable not set")
+func checkPostgres(ctx context.Context, pool *pgxpool.Pool) error {
+	if pool == nil {
+		return errors.New("pool is nil")
 	}
-
-	pool, poolErr := pgxpool.New(ctx, dbURL)
-	if poolErr != nil {
-		return fmt.Errorf("create postgres pool: %w", poolErr)
-	}
-	defer pool.Close()
 	pingErr := pool.Ping(ctx)
 	if pingErr != nil {
 		return fmt.Errorf("ping postgres: %w", pingErr)
