@@ -43,7 +43,7 @@ func processNext(ctx context.Context, pool *pgxpool.Pool) (bool, error) {
 
 func processNextWith(ctx context.Context, pool *pgxpool.Pool, send func(context.Context, Notification) error) (bool, error) {
 	const claim = `
-		SELECT event_id, channel, user_id, event_type, COALESCE(payload->>'order_id', ''), attempts
+		SELECT event_id, channel, user_id, event_type, payload, attempts
 		FROM notifications
 		WHERE status = 'pending' AND next_attempt_at <= now()
 		ORDER BY next_attempt_at, event_id, channel
@@ -59,9 +59,10 @@ func processNextWith(ctx context.Context, pool *pgxpool.Pool, send func(context.
 	var processed bool
 	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		var msg Notification
-		var eventType, orderID string
+		var eventType string
+		var payload []byte
 		var attempts int
-		err := tx.QueryRow(ctx, claim).Scan(&msg.EventID, &msg.Channel, &msg.UserID, &eventType, &orderID, &attempts)
+		err := tx.QueryRow(ctx, claim).Scan(&msg.EventID, &msg.Channel, &msg.UserID, &eventType, &payload, &attempts)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
 		}
@@ -69,7 +70,7 @@ func processNextWith(ctx context.Context, pool *pgxpool.Pool, send func(context.
 			return fmt.Errorf("select notification: %w", err)
 		}
 
-		msg.Text, err = notificationText(eventType, orderID)
+		msg.Text, err = notificationText(eventType, orderIDFromPayload(payload))
 		if err != nil {
 			return err
 		}

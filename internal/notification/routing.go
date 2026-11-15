@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 )
@@ -16,6 +17,23 @@ func channelsFor(eventType string) ([]string, error) {
 	default:
 		return nil, errors.New("unknown notification type")
 	}
+}
+
+func orderIDFromPayload(payload []byte) string {
+	var fields struct {
+		OrderID json.RawMessage `json:"order_id"`
+	}
+	if err := json.Unmarshal(payload, &fields); err != nil || len(fields.OrderID) == 0 || string(fields.OrderID) == "null" {
+		return ""
+	}
+	if fields.OrderID[0] == '"' {
+		var value string
+		if err := json.Unmarshal(fields.OrderID, &value); err != nil {
+			return ""
+		}
+		return value
+	}
+	return string(fields.OrderID)
 }
 
 func notificationText(eventType, orderID string) (string, error) {

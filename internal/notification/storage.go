@@ -2,29 +2,23 @@ package notification
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func saveEvent(ctx context.Context, pool *pgxpool.Pool, event Event) error {
-	if event.EventID == "" {
-		return errors.New("missing event_id")
-	}
-
-	channels, err := channelsFor(event.EventType)
-	if err != nil {
-		return err
-	}
-
+func saveEvent(ctx context.Context, pool *pgxpool.Pool, event Event, channels []string) error {
 	const insert = `
+		WITH accepted AS (
+			INSERT INTO received_events (event_id) VALUES ($1)
+			ON CONFLICT (event_id) DO NOTHING
+			RETURNING event_id
+		)
 		INSERT INTO notifications (event_id, user_id, event_type, event_timestamp, payload, channel)
-		SELECT $1, $2, $3, $4, $5, channel
-		FROM unnest($6::text[]) AS channels(channel)
-		ON CONFLICT (event_id, channel) DO NOTHING`
+		SELECT accepted.event_id, $2, $3, $4, $5, channels.channel
+		FROM accepted CROSS JOIN unnest($6::text[]) AS channels(channel)`
 
-	_, err = pool.Exec(ctx, insert, event.EventID, event.UserID, event.EventType, event.Timestamp, event.Payload, channels)
+	_, err := pool.Exec(ctx, insert, event.EventID, event.UserID, event.EventType, event.Timestamp, []byte(event.Payload), channels)
 	if err != nil {
 		return fmt.Errorf("save notifications for event %s: %w", event.EventID, err)
 	}

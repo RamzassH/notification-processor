@@ -54,6 +54,10 @@ func workerTestPool(t *testing.T, ctx context.Context) *pgxpool.Pool {
 func seedWorkerQueue(t *testing.T, ctx context.Context, pool *pgxpool.Pool, channel string) {
 	t.Helper()
 	_, err := pool.Exec(ctx, `
+		INSERT INTO received_events (event_id) VALUES ('00000000-0000-4000-8000-000000000101')
+		ON CONFLICT DO NOTHING`)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
 		INSERT INTO notifications (event_id, channel, user_id, event_type, payload, event_timestamp)
 		VALUES ('00000000-0000-4000-8000-000000000101', $1, 42, 'order_created', '{"order_id":101}', now())`, channel)
 	require.NoError(t, err)

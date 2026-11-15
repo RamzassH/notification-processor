@@ -35,7 +35,7 @@ func TestConsumePoisonAndReplay(t *testing.T) {
 	defer func() {
 		cleanup, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
-		_, err := pool.Exec(cleanup, "DELETE FROM notifications WHERE event_id = $1", id)
+		_, err := pool.Exec(cleanup, "DELETE FROM received_events WHERE event_id = $1", id)
 		require.NoError(t, err)
 	}()
 

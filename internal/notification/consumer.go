@@ -2,7 +2,6 @@ package notification
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -40,11 +39,11 @@ func Consume(ctx context.Context, reader *kafka.Reader, pool *pgxpool.Pool) erro
 }
 
 func processMessage(ctx context.Context, reader *kafka.Reader, pool *pgxpool.Pool, msg kafka.Message) error {
-	var event Event
-	if err := json.Unmarshal(msg.Value, &event); err != nil {
-		slog.Warn("invalid event JSON", "topic", msg.Topic,
+	event, channels, err := decodeEvent(msg.Value)
+	if err != nil {
+		slog.Warn("invalid event", "topic", msg.Topic,
 			"partition", msg.Partition, "offset", msg.Offset, "error", err)
-	} else if err := saveEvent(ctx, pool, event); err != nil {
+	} else if err := saveEvent(ctx, pool, event, channels); err != nil {
 		return fmt.Errorf("process %s partition %d offset %d: %w",
 			msg.Topic, msg.Partition, msg.Offset, err)
 	}
