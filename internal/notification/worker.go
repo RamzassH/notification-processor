@@ -47,7 +47,7 @@ func processNextWith(ctx context.Context, pool *pgxpool.Pool, send func(context.
 		FROM notifications
 		WHERE status = 'pending' AND next_attempt_at <= now()
 		ORDER BY next_attempt_at, event_id, channel
-		LIMIT 1 FOR UPDATE SKIP LOCKED`
+		LIMIT 1 FOR NO KEY UPDATE SKIP LOCKED`
 
 	const update = `
 		UPDATE notifications SET status = $3, attempts = $4,
